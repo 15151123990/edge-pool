@@ -11,6 +11,7 @@ import java.util.Base64;
  */
 public final class HmacSigner {
     private static final String HMAC_SHA256 = "HmacSHA256";
+    private static final long DEFAULT_TTL_MS = 60_000L;
 
     private HmacSigner() {}
 
@@ -25,7 +26,6 @@ public final class HmacSigner {
      */
     public static String sign(String secret, String body, String ts, String deviceId) {
         try {
-            // 签名原文约定：时间戳.设备ID.请求体
             String payload = ts + "." + deviceId + "." + body;
             Mac mac = Mac.getInstance(HMAC_SHA256);
             SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA256);
@@ -38,19 +38,54 @@ public final class HmacSigner {
     }
 
     /**
-     * 验签。
+     * 验签（使用默认 TTL）。
      *
      * @param secret 签名密钥
      * @param body 请求体原文
      * @param ts 请求时间戳
      * @param deviceId 设备 ID
      * @param signature 待验证签名
-     * @return true 表示签名有效
+     * @return true 表示签名有效且未过期
      */
     public static boolean verify(String secret, String body, String ts, String deviceId, String signature) {
-        // 先按同样规则重算签名，再做常量时间比较
+        return verify(secret, body, ts, deviceId, signature, DEFAULT_TTL_MS);
+    }
+
+    /**
+     * 验签（指定 TTL）。
+     *
+     * @param secret 签名密钥
+     * @param body 请求体原文
+     * @param ts 请求时间戳
+     * @param deviceId 设备 ID
+     * @param signature 待验证签名
+     * @param ttlMs 时间戳有效期（毫秒）
+     * @return true 表示签名有效且未过期
+     */
+    public static boolean verify(String secret, String body, String ts, String deviceId, String signature, long ttlMs) {
+        if (!isTimestampValid(ts, ttlMs)) {
+            return false;
+        }
         String expected = sign(secret, body, ts, deviceId);
         return constantTimeEquals(expected, signature);
+    }
+
+    /**
+     * 检查时间戳是否在有效期内。
+     *
+     * @param ts 时间戳字符串
+     * @param ttlMs 有效期（毫秒）
+     * @return true 表示时间戳有效
+     */
+    private static boolean isTimestampValid(String ts, long ttlMs) {
+        try {
+            long timestamp = Long.parseLong(ts);
+            long now = System.currentTimeMillis();
+            long diff = Math.abs(now - timestamp);
+            return diff <= ttlMs;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     /**

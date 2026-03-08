@@ -7,6 +7,9 @@ import com.pool.edge.common.model.ModelSpec;
 import com.pool.edge.infer.api.InferenceEngine;
 import com.pool.edge.infer.api.ModelRegistry;
 import ai.onnxruntime.*;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -22,41 +25,25 @@ import java.util.concurrent.ConcurrentHashMap;
  * 输入视频帧并执行 ONNX 模型推理，输出规则引擎可消费的 EventSignal。
  */
 @Component
+@Slf4j
 public class OnnxInferenceEngine implements InferenceEngine {
-    /** 模型注册中心，用于查询通道绑定的模型。 */
+
     private final ModelRegistry modelRegistry;
-    /** ONNX Runtime 运行环境。 */
     private final OrtEnvironment ortEnvironment;
-    /** 模型会话缓存，避免重复加载模型文件。 */
     private final Map<String, OrtSession> sessionCache = new ConcurrentHashMap<>();
-    /** 上一帧灰度图缓存，用于估算运动强度。 */
     private final Map<String, float[]> previousGray = new ConcurrentHashMap<>();
 
-    /** 推理输入分辨率，默认 640。 */
     @Value("${edge.infer.input-size:640}")
     private int inputSize;
 
-    /** 检测置信度阈值，小于该阈值的结果会被过滤。 */
     @Value("${edge.infer.conf-threshold:0.25}")
     private float confThreshold;
 
-    /**
-     * 构造推理引擎。
-     *
-     * @param modelRegistry 模型注册中心
-     */
     public OnnxInferenceEngine(ModelRegistry modelRegistry) {
         this.modelRegistry = modelRegistry;
         this.ortEnvironment = OrtEnvironment.getEnvironment();
     }
 
-    /**
-     * 执行单帧推理并输出事件信号。
-     *
-     * @param frame 当前视频帧
-     * @param channel 通道配置
-     * @return 可选事件信号（无结果或低置信度时为空）
-     */
     @Override
     public Optional<EventSignal> infer(FramePacket frame, ChannelConfig channel) {
         try {
@@ -106,9 +93,28 @@ public class OnnxInferenceEngine implements InferenceEngine {
                         motionScore
                 ));
             }
+        } catch (OrtException e) {
+            log.error("[INFER] ONNX inference error: {}", e.getMessage());
+            return Optional.empty();
         } catch (Exception e) {
+            log.error("[INFER] unexpected error: {}", e.getMessage(), e);
             return Optional.empty();
         }
+    }
+
+    @PreDestroy
+    public void destroy() {
+        for (Map.Entry<String, OrtSession> entry : sessionCache.entrySet()) {
+            try {
+                entry.getValue().close();
+                log.info("[INFER] session closed: {}", entry.getKey());
+            } catch (OrtException e) {
+                log.warn("[INFER] failed to close session {}: {}", entry.getKey(), e.getMessage());
+            }
+        }
+        sessionCache.clear();
+        previousGray.clear();
+        log.info("[INFER] engine destroyed, all sessions released");
     }
 
     private OrtSession getSession(ModelSpec modelSpec) {
@@ -116,31 +122,20 @@ public class OnnxInferenceEngine implements InferenceEngine {
             try {
                 OrtSession.SessionOptions options = new OrtSession.SessionOptions();
                 options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-                return ortEnvironment.createSession(modelSpec.uri(), options);
-            } catch (Exception e) {
+                OrtSession session = ortEnvironment.createSession(modelSpec.uri(), options);
+                log.info("[INFER] session created: {}", k);
+                return session;
+            } catch (OrtException e) {
+                log.error("[INFER] failed to create session for {}: {}", k, e.getMessage());
                 return null;
             }
         });
     }
 
-    /**
-     * 生成会话缓存键。
-     *
-     * @param spec 模型规格
-     * @return 缓存键
-     */
     private String cacheKey(ModelSpec spec) {
         return spec.modelProfileId() + ":" + spec.version();
     }
 
-    /**
-     * 预处理图像为 CHW 的 float 数组。
-     *
-     * @param src 原始图像
-     * @param targetW 目标宽度
-     * @param targetH 目标高度
-     * @return 归一化后的 CHW 数据
-     */
     private float[] preprocess(BufferedImage src, int targetW, int targetH) {
         BufferedImage resized = new BufferedImage(targetW, targetH, BufferedImage.TYPE_3BYTE_BGR);
         Graphics2D g = resized.createGraphics();
@@ -166,13 +161,6 @@ public class OnnxInferenceEngine implements InferenceEngine {
         return chw;
     }
 
-    /**
-     * 从 ONNX 输出中提取最大置信度。
-     *
-     * @param value ONNX 输出值
-     * @return 最大置信度
-     * @throws OrtException ONNX 解析异常
-     */
     private float parseMaxConfidence(OnnxValue value) throws OrtException {
         if (!(value instanceof OnnxTensor tensor)) {
             return 0f;
@@ -205,13 +193,6 @@ public class OnnxInferenceEngine implements InferenceEngine {
         return max;
     }
 
-    /**
-     * 估算相邻帧的运动强度分数。
-     *
-     * @param channelId 通道 ID
-     * @param image 当前图像
-     * @return 0~1 运动分数
-     */
     private float estimateMotionScore(String channelId, BufferedImage image) {
         int w = 64;
         int h = 36;

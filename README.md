@@ -18,7 +18,7 @@
 
 - 长时没顶（`LONG_SUBMERGE`）
 - 垂直挣扎（`VERTICAL_STRUGGLE`）
-- 异常静止（`ABNORMAL_STILLNESS`）
+- 异常静止（`ABNORMAL_STATIC`）
 - 危险区滞留（`DANGER_ZONE_STAY`）
 
 规则控制支持：
@@ -156,5 +156,5 @@ curl -X PUT http://localhost:8081/edge/channels/pool-001/roi \
 
 ## 端口说明（默认）
 
-- `edge-agent`: `8081`
-- `control-plane`: `8090`
+- `edge-agent`: `18080`
+- `control-plane`: `19090`

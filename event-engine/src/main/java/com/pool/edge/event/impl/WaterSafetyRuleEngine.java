@@ -5,6 +5,7 @@ import com.pool.edge.common.model.Enums.EventType;
 import com.pool.edge.common.model.EventDecision;
 import com.pool.edge.common.model.EventSignal;
 import com.pool.edge.event.api.RuleEngine;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -18,19 +19,20 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 public class WaterSafetyRuleEngine implements RuleEngine {
-    private final Map<String, Integer> noHeadCounter = new ConcurrentHashMap<>();
-    private final Map<String, Integer> struggleCounter = new ConcurrentHashMap<>();
-    private final Map<String, Integer> staticCounter = new ConcurrentHashMap<>();
-    private final Map<String, Integer> dangerStayCounter = new ConcurrentHashMap<>();
+    private static final long STALE_KEY_TTL_MS = 60_000L;
+
+    private final Map<String, CounterState> noHeadCounter = new ConcurrentHashMap<>();
+    private final Map<String, CounterState> struggleCounter = new ConcurrentHashMap<>();
+    private final Map<String, CounterState> staticCounter = new ConcurrentHashMap<>();
+    private final Map<String, CounterState> dangerStayCounter = new ConcurrentHashMap<>();
 
     @Override
     public Optional<EventDecision> evaluate(EventSignal s) {
-        // 每个目标以 channelId + trackId 作为状态键
         String key = s.channelId() + ":" + s.trackId();
+        long now = System.currentTimeMillis();
 
-        // 规则1：长时没顶
         if (!s.headVisible()) {
-            int n = noHeadCounter.merge(key, 1, Integer::sum);
+            int n = increment(noHeadCounter, key, now);
             if (n >= 15) {
                 return Optional.of(decision(EventType.LONG_SUBMERGE, AlertLevel.L3_EMERGENCY, s, "head invisible over multi-frame threshold"));
             }
@@ -38,9 +40,8 @@ public class WaterSafetyRuleEngine implements RuleEngine {
             noHeadCounter.remove(key);
         }
 
-        // 规则2：垂直挣扎（位移低 + 动作幅度高）
         if (s.speed() < 0.05f && s.motionScore() > 0.7f) {
-            int n = struggleCounter.merge(key, 1, Integer::sum);
+            int n = increment(struggleCounter, key, now);
             if (n >= 12) {
                 return Optional.of(decision(EventType.VERTICAL_STRUGGLE, AlertLevel.L2_ALARM, s, "low displacement with high struggle score"));
             }
@@ -48,9 +49,8 @@ public class WaterSafetyRuleEngine implements RuleEngine {
             struggleCounter.remove(key);
         }
 
-        // 规则3：异常静止（动作极低 + 头部不可见）
         if (s.motionScore() < 0.1f && !s.headVisible()) {
-            int n = staticCounter.merge(key, 1, Integer::sum);
+            int n = increment(staticCounter, key, now);
             if (n >= 20) {
                 return Optional.of(decision(EventType.ABNORMAL_STATIC, AlertLevel.L2_ALARM, s, "abnormal static status in water"));
             }
@@ -58,9 +58,8 @@ public class WaterSafetyRuleEngine implements RuleEngine {
             staticCounter.remove(key);
         }
 
-        // 规则4：危险区滞留
         if (s.inDangerZone()) {
-            int n = dangerStayCounter.merge(key, 1, Integer::sum);
+            int n = increment(dangerStayCounter, key, now);
             if (n >= 30) {
                 return Optional.of(decision(EventType.DANGER_ZONE_STAY, AlertLevel.L1_PRE_WARNING, s, "stay too long in danger zone"));
             }
@@ -71,15 +70,28 @@ public class WaterSafetyRuleEngine implements RuleEngine {
         return Optional.empty();
     }
 
-    /**
-     * 构造事件决策对象。
-     *
-     * @param type 事件类型
-     * @param level 告警等级
-     * @param s 原始信号
-     * @param reason 触发原因
-     * @return 事件决策
-     */
+    @Scheduled(fixedRate = 60_000)
+    public void cleanupStaleCounters() {
+        long now = System.currentTimeMillis();
+        cleanupStale(noHeadCounter, now);
+        cleanupStale(struggleCounter, now);
+        cleanupStale(staticCounter, now);
+        cleanupStale(dangerStayCounter, now);
+    }
+
+    private int increment(Map<String, CounterState> map, String key, long now) {
+        CounterState state = map.computeIfAbsent(key, k -> new CounterState(0, now));
+        state.count++;
+        state.lastUpdateMs = now;
+        return state.count;
+    }
+
+    private void cleanupStale(Map<String, CounterState> map, long now) {
+        map.entrySet().removeIf(entry ->
+                now - entry.getValue().lastUpdateMs > STALE_KEY_TTL_MS
+        );
+    }
+
     private EventDecision decision(EventType type, AlertLevel level, EventSignal s, String reason) {
         long now = System.currentTimeMillis();
         return new EventDecision(
@@ -92,5 +104,15 @@ public class WaterSafetyRuleEngine implements RuleEngine {
                 now,
                 reason
         );
+    }
+
+    private static final class CounterState {
+        volatile int count;
+        volatile long lastUpdateMs;
+
+        CounterState(int count, long lastUpdateMs) {
+            this.count = count;
+            this.lastUpdateMs = lastUpdateMs;
+        }
     }
 }

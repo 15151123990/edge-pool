@@ -5,6 +5,7 @@ import com.pool.edge.common.model.FramePacket;
 import com.pool.edge.stream.api.StreamHealthStatus;
 import com.pool.edge.stream.api.StreamPuller;
 import jakarta.annotation.PreDestroy;
+import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
@@ -22,29 +23,26 @@ import java.util.concurrent.ConcurrentHashMap;
  * 基于 FFmpeg 的真实拉流实现。
  * 支持 RTSP 流的连接、取帧和断线重连。
  */
+@Slf4j
 @Component
 public class FfmpegStreamPuller implements StreamPuller {
+
     static {
-        // 降低 FFmpeg 日志噪音
         avutil.av_log_set_level(avutil.AV_LOG_ERROR);
     }
 
     private final Map<String, GrabberHolder> holderByChannel = new ConcurrentHashMap<>();
     private final Map<String, MutableHealthState> healthByChannel = new ConcurrentHashMap<>();
 
-    /** 重连基础退避时间（毫秒）。 */
     @Value("${edge.stream.reconnect.base-backoff-ms:1000}")
     private long baseBackoffMs;
 
-    /** 重连最大退避时间（毫秒）。 */
     @Value("${edge.stream.reconnect.max-backoff-ms:30000}")
     private long maxBackoffMs;
 
-    /** 熔断触发阈值（连续失败次数）。 */
     @Value("${edge.stream.reconnect.fuse-threshold:30}")
     private int fuseThreshold;
 
-    /** 熔断后最小冷却窗口（毫秒）。 */
     @Value("${edge.stream.reconnect.fuse-cooldown-ms:30000}")
     private long fuseCooldownMs;
 
@@ -63,10 +61,10 @@ public class FfmpegStreamPuller implements StreamPuller {
                 holder = openGrabber(channel);
                 holderByChannel.put(channelId, holder);
                 state.totalReconnects++;
+                log.info("[STREAM] connected: channelId={}", channelId);
             }
             Frame frame = holder.grabber.grabImage();
             if (frame == null) {
-                // 空帧视为断流，释放并进入退避重连
                 markFailure(state, now, "grabImage empty frame");
                 release(channelId);
                 return Optional.empty();
@@ -80,8 +78,10 @@ public class FfmpegStreamPuller implements StreamPuller {
             markSuccess(state, now);
             return Optional.of(new FramePacket(channelId, idx, now, image));
         } catch (Exception e) {
-            markFailure(state, now, e.getMessage() == null ? "stream exception" : e.getMessage());
+            String reason = e.getMessage() == null ? "stream exception" : e.getMessage();
+            markFailure(state, now, reason);
             release(channelId);
+            log.warn("[STREAM] pull failed: channelId={}, reason={}", channelId, reason);
             return Optional.empty();
         }
     }
@@ -102,11 +102,11 @@ public class FfmpegStreamPuller implements StreamPuller {
         }
         holder.converter.close();
 
-        // 主动释放后标记为未连接，但保留统计信息用于运维观察
         MutableHealthState state = healthByChannel.get(channelId);
         if (state != null) {
             state.connected = false;
         }
+        log.info("[STREAM] released: channelId={}", channelId);
     }
 
     @Override
@@ -129,6 +129,7 @@ public class FfmpegStreamPuller implements StreamPuller {
         for (String channelId : holderByChannel.keySet()) {
             release(channelId);
         }
+        log.info("[STREAM] all grabbers released");
     }
 
     private GrabberHolder openGrabber(ChannelConfig channel) {
@@ -142,16 +143,11 @@ public class FfmpegStreamPuller implements StreamPuller {
             g.start();
             return new GrabberHolder(g, new Java2DFrameConverter());
         } catch (Exception e) {
+            log.error("[STREAM] open failed: channelId={}, error={}", channel.channelId(), e.getMessage());
             throw new IllegalStateException("open stream failed: " + channel.channelId(), e);
         }
     }
 
-    /**
-     * 标记拉流成功并重置失败计数。
-     *
-     * @param state 可变状态对象
-     * @param now 当前时间戳（毫秒）
-     */
     private void markSuccess(MutableHealthState state, long now) {
         state.connected = true;
         state.circuitOpen = false;
@@ -161,13 +157,6 @@ public class FfmpegStreamPuller implements StreamPuller {
         state.lastError = "";
     }
 
-    /**
-     * 标记拉流失败并计算下一次重试时间。
-     *
-     * @param state 可变状态对象
-     * @param now 当前时间戳（毫秒）
-     * @param reason 失败原因摘要
-     */
     private void markFailure(MutableHealthState state, long now, String reason) {
         state.connected = false;
         state.consecutiveFailures++;
@@ -177,6 +166,8 @@ public class FfmpegStreamPuller implements StreamPuller {
 
         if (state.consecutiveFailures >= fuseThreshold) {
             state.circuitOpen = true;
+            log.warn("[STREAM] circuit open: channelId={}, consecutiveFailures={}",
+                    state.channelId, state.consecutiveFailures);
         }
 
         long exponent = Math.max(0, state.consecutiveFailures - 1);
@@ -195,9 +186,6 @@ public class FfmpegStreamPuller implements StreamPuller {
         state.nextRetryAtMs = now + backoff;
     }
 
-    /**
-     * 内部可变拉流健康状态。
-     */
     private static final class MutableHealthState {
         private final String channelId;
         private boolean connected = false;
