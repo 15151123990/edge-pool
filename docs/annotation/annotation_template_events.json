@@ -1,0 +1,44 @@
+[
+  {
+    "video_id": "sanya_pool_20260301_001",
+    "channel_id": "pool-001",
+    "track_id": "trk-001",
+    "frame_ts_ms": 1700000001000,
+    "bbox": [0.42, 0.31, 0.51, 0.62],
+    "roi_in": true,
+    "event_type": "ABNORMAL_STILLNESS",
+    "event_start_ms": 1700000000000,
+    "event_end_ms": 1700000010000,
+    "occlusion": "low",
+    "quality": "good",
+    "remark": "静止超过10秒"
+  },
+  {
+    "video_id": "sanya_pool_20260301_003",
+    "channel_id": "pool-001",
+    "track_id": "trk-013",
+    "frame_ts_ms": 1700000200000,
+    "bbox": [0.66, 0.24, 0.75, 0.58],
+    "roi_in": true,
+    "event_type": "LONG_SUBMERGE",
+    "event_start_ms": 1700000195000,
+    "event_end_ms": 1700000204000,
+    "occlusion": "high",
+    "quality": "normal",
+    "remark": "头部不可见"
+  },
+  {
+    "video_id": "sanya_pool_20260301_005",
+    "channel_id": "pool-001",
+    "track_id": "trk-031",
+    "frame_ts_ms": 1700000400000,
+    "bbox": [0.30, 0.26, 0.40, 0.58],
+    "roi_in": true,
+    "event_type": "NORMAL_STILLNESS",
+    "event_start_ms": 1700000395000,
+    "event_end_ms": 1700000405000,
+    "occlusion": "low",
+    "quality": "good",
+    "remark": "正常漂浮负样本"
+  }
+]

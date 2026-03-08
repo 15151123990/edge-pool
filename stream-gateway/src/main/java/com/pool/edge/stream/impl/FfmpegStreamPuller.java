@@ -5,7 +5,6 @@ import com.pool.edge.common.model.FramePacket;
 import com.pool.edge.stream.api.StreamHealthStatus;
 import com.pool.edge.stream.api.StreamPuller;
 import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
@@ -23,10 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 基于 FFmpeg 的真实拉流实现。
  * 支持 RTSP 流的连接、取帧和断线重连。
  */
-@Slf4j
 @Component
 public class FfmpegStreamPuller implements StreamPuller {
-
     static {
         avutil.av_log_set_level(avutil.AV_LOG_ERROR);
     }
@@ -61,7 +58,6 @@ public class FfmpegStreamPuller implements StreamPuller {
                 holder = openGrabber(channel);
                 holderByChannel.put(channelId, holder);
                 state.totalReconnects++;
-                log.info("[STREAM] connected: channelId={}", channelId);
             }
             Frame frame = holder.grabber.grabImage();
             if (frame == null) {
@@ -81,7 +77,6 @@ public class FfmpegStreamPuller implements StreamPuller {
             String reason = e.getMessage() == null ? "stream exception" : e.getMessage();
             markFailure(state, now, reason);
             release(channelId);
-            log.warn("[STREAM] pull failed: channelId={}, reason={}", channelId, reason);
             return Optional.empty();
         }
     }
@@ -106,7 +101,6 @@ public class FfmpegStreamPuller implements StreamPuller {
         if (state != null) {
             state.connected = false;
         }
-        log.info("[STREAM] released: channelId={}", channelId);
     }
 
     @Override
@@ -129,7 +123,6 @@ public class FfmpegStreamPuller implements StreamPuller {
         for (String channelId : holderByChannel.keySet()) {
             release(channelId);
         }
-        log.info("[STREAM] all grabbers released");
     }
 
     private GrabberHolder openGrabber(ChannelConfig channel) {
@@ -143,7 +136,6 @@ public class FfmpegStreamPuller implements StreamPuller {
             g.start();
             return new GrabberHolder(g, new Java2DFrameConverter());
         } catch (Exception e) {
-            log.error("[STREAM] open failed: channelId={}, error={}", channel.channelId(), e.getMessage());
             throw new IllegalStateException("open stream failed: " + channel.channelId(), e);
         }
     }
@@ -166,8 +158,6 @@ public class FfmpegStreamPuller implements StreamPuller {
 
         if (state.consecutiveFailures >= fuseThreshold) {
             state.circuitOpen = true;
-            log.warn("[STREAM] circuit open: channelId={}, consecutiveFailures={}",
-                    state.channelId, state.consecutiveFailures);
         }
 
         long exponent = Math.max(0, state.consecutiveFailures - 1);

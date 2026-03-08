@@ -8,8 +8,6 @@ import com.pool.edge.infer.api.InferenceEngine;
 import com.pool.edge.infer.api.ModelRegistry;
 import ai.onnxruntime.*;
 import jakarta.annotation.PreDestroy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * 输入视频帧并执行 ONNX 模型推理，输出规则引擎可消费的 EventSignal。
  */
 @Component
-@Slf4j
 public class OnnxInferenceEngine implements InferenceEngine {
 
     private final ModelRegistry modelRegistry;
@@ -94,10 +91,8 @@ public class OnnxInferenceEngine implements InferenceEngine {
                 ));
             }
         } catch (OrtException e) {
-            log.error("[INFER] ONNX inference error: {}", e.getMessage());
             return Optional.empty();
         } catch (Exception e) {
-            log.error("[INFER] unexpected error: {}", e.getMessage(), e);
             return Optional.empty();
         }
     }
@@ -107,14 +102,12 @@ public class OnnxInferenceEngine implements InferenceEngine {
         for (Map.Entry<String, OrtSession> entry : sessionCache.entrySet()) {
             try {
                 entry.getValue().close();
-                log.info("[INFER] session closed: {}", entry.getKey());
             } catch (OrtException e) {
-                log.warn("[INFER] failed to close session {}: {}", entry.getKey(), e.getMessage());
+                // 忽略关闭异常，避免影响其余会话释放
             }
         }
         sessionCache.clear();
         previousGray.clear();
-        log.info("[INFER] engine destroyed, all sessions released");
     }
 
     private OrtSession getSession(ModelSpec modelSpec) {
@@ -122,11 +115,8 @@ public class OnnxInferenceEngine implements InferenceEngine {
             try {
                 OrtSession.SessionOptions options = new OrtSession.SessionOptions();
                 options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
-                OrtSession session = ortEnvironment.createSession(modelSpec.uri(), options);
-                log.info("[INFER] session created: {}", k);
-                return session;
+                return ortEnvironment.createSession(modelSpec.uri(), options);
             } catch (OrtException e) {
-                log.error("[INFER] failed to create session for {}: {}", k, e.getMessage());
                 return null;
             }
         });

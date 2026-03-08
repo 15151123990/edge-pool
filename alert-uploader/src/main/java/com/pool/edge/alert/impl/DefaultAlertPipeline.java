@@ -5,7 +5,6 @@ import com.pool.edge.alert.storage.ArtifactStorage;
 import com.pool.edge.common.model.EventDecision;
 import com.pool.edge.common.protocol.ArtifactMeta;
 import com.pool.edge.common.security.HmacSigner;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,14 +20,16 @@ import java.time.Instant;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * 默认告警管道实现。
  * 处理步骤：去重 -> 生成附件 -> 上传对象存储 -> 上报元数据。
  */
-@Slf4j
 @Component
 public class DefaultAlertPipeline implements AlertPipeline {
+    private static final Logger logger = Logger.getLogger(DefaultAlertPipeline.class.getName());
     private static final long DEDUPE_TTL_MS = Duration.ofSeconds(20).toMillis();
 
     private final Map<String, Long> dedupeWindow = new ConcurrentHashMap<>();
@@ -84,7 +85,7 @@ public class DefaultAlertPipeline implements AlertPipeline {
 
             uploadMeta(decision, screenshot, clip, screenshotUrl, clipUrl, screenshotKey, clipKey);
         } catch (Exception e) {
-            log.error("[ALERT] upload failed: {}", e.getMessage(), e);
+            logger.log(Level.SEVERE, "[ALERT] upload failed: " + e.getMessage(), e);
         }
     }
 

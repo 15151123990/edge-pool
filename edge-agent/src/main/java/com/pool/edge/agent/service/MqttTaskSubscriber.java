@@ -5,18 +5,20 @@ import com.pool.edge.common.protocol.OpsTask;
 import com.pool.edge.common.protocol.TaskResult;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * MQTT 任务订阅器。
  * 订阅设备专属主题并执行下发任务。
  */
-@Slf4j
 @Component
 public class MqttTaskSubscriber {
+    private static final Logger logger = Logger.getLogger(MqttTaskSubscriber.class.getName());
 
     @Value("${edge.mqtt.enabled:false}")
     private boolean enabled;
@@ -55,7 +57,7 @@ public class MqttTaskSubscriber {
     @PostConstruct
     public void init() {
         if (!enabled) {
-            log.info("[MQTT] subscriber disabled");
+            logger.info("[MQTT] subscriber disabled");
             return;
         }
         try {
@@ -67,7 +69,7 @@ public class MqttTaskSubscriber {
             client.setCallback(new MqttCallback() {
                 @Override
                 public void connectionLost(Throwable cause) {
-                    log.warn("[MQTT] connection lost: {}", cause.getMessage());
+                    logger.warning("[MQTT] connection lost: " + cause.getMessage());
                 }
 
                 @Override
@@ -82,9 +84,9 @@ public class MqttTaskSubscriber {
             client.connect(options);
             String topic = taskTopicPrefix + "/" + deviceId;
             client.subscribe(topic, qos);
-            log.info("[MQTT] subscriber initialized, topic={}", topic);
+            logger.info("[MQTT] subscriber initialized, topic=" + topic);
         } catch (Exception e) {
-            log.error("[MQTT] subscriber init failed: {}", e.getMessage(), e);
+            logger.log(Level.SEVERE, "[MQTT] subscriber init failed: " + e.getMessage(), e);
             throw new IllegalStateException("mqtt subscriber init failed", e);
         }
     }
@@ -92,7 +94,7 @@ public class MqttTaskSubscriber {
     private void handleMessage(MqttMessage message) {
         try {
             OpsTask task = objectMapper.readValue(message.getPayload(), OpsTask.class);
-            log.info("[MQTT] received task: taskId={}, type={}", task.taskId(), task.type());
+            logger.info("[MQTT] received task: taskId=" + task.taskId() + ", type=" + task.type());
 
             String msg = opsTaskService.execute(task);
 
@@ -104,9 +106,9 @@ public class MqttTaskSubscriber {
                     System.currentTimeMillis()
             );
             edgeCloudClient.reportTaskResult(result);
-            log.info("[MQTT] task completed: taskId={}", task.taskId());
+            logger.info("[MQTT] task completed: taskId=" + task.taskId());
         } catch (Exception e) {
-            log.error("[MQTT] message handling failed: {}", e.getMessage(), e);
+            logger.log(Level.SEVERE, "[MQTT] message handling failed: " + e.getMessage(), e);
             tryReportFailure(message, e);
         }
     }
@@ -131,7 +133,7 @@ public class MqttTaskSubscriber {
             );
             edgeCloudClient.reportTaskResult(result);
         } catch (Exception e) {
-            log.error("[MQTT] failed to report error: {}", e.getMessage());
+            logger.warning("[MQTT] failed to report error: " + e.getMessage());
         }
     }
 
@@ -143,11 +145,11 @@ public class MqttTaskSubscriber {
         try {
             if (client.isConnected()) {
                 client.disconnect();
-                log.info("[MQTT] disconnected");
+                logger.info("[MQTT] disconnected");
             }
             client.close();
         } catch (MqttException e) {
-            log.warn("[MQTT] close error: {}", e.getMessage());
+            logger.warning("[MQTT] close error: " + e.getMessage());
         }
     }
 }

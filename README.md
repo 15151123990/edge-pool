@@ -37,8 +37,14 @@ mvn -DskipTests package
 ## 启动
 
 ```bash
-mvn -pl edge-agent spring-boot:run
-mvn -pl control-plane spring-boot:run
+# 先安装多模块产物到本地仓库（首次或代码改动后建议执行）
+mvn -DskipTests install
+
+# 启动控制面（建议先启动，避免边缘端心跳报连接失败）
+mvn -f control-plane/pom.xml spring-boot:run
+
+# 启动边缘端
+mvn -f edge-agent/pom.xml spring-boot:run
 ```
 
 ## 真实链路联调步骤

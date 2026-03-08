@@ -5,22 +5,22 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.logging.Logger;
 
 /**
  * 阿里云 OSS 存储实现。
  * 用于生产环境上传截图和短片段。
  */
-@Slf4j
 @Component
 @ConditionalOnProperty(name = "edge.alert.storage.type", havingValue = "oss")
 public class AliyunOssArtifactStorage implements ArtifactStorage {
+    private static final Logger logger = Logger.getLogger(AliyunOssArtifactStorage.class.getName());
 
     @Value("${edge.alert.storage.oss.endpoint:oss-cn-shenzhen.aliyuncs.com}")
     private String endpoint;
@@ -41,20 +41,27 @@ public class AliyunOssArtifactStorage implements ArtifactStorage {
 
     @PostConstruct
     public void init() {
+        if (accessKeyId == null || accessKeyId.isBlank() || accessKeySecret == null || accessKeySecret.isBlank()) {
+            logger.warning("[OSS] access key not configured, OSS uploader disabled");
+            return;
+        }
         client = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
-        log.info("[OSS] client initialized, endpoint={}, bucket={}", endpoint, bucket);
+        logger.info("[OSS] client initialized, endpoint=" + endpoint + ", bucket=" + bucket);
     }
 
     @PreDestroy
     public void destroy() {
         if (client != null) {
             client.shutdown();
-            log.info("[OSS] client shutdown");
+            logger.info("[OSS] client shutdown");
         }
     }
 
     @Override
     public String upload(File file, String objectKey) {
+        if (client == null) {
+            throw new IllegalStateException("aliyun oss is not initialized, please configure access key");
+        }
         try (FileInputStream input = new FileInputStream(file)) {
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentType(detectContentType(file.getName()));

@@ -24,7 +24,7 @@ edge:
       source: ""
       clip-seconds: 10
     storage:
-      type: oss   # local | oss | s3
+      type: local   # local | oss | s3
       local-dir: /tmp/pool-ai/uploaded
       oss:
         endpoint: oss-cn-shenzhen.aliyuncs.com

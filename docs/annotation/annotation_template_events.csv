@@ -1,0 +1,7 @@
+video_id,channel_id,track_id,frame_ts_ms,bbox_x1,bbox_y1,bbox_x2,bbox_y2,roi_in,event_type,event_start_ms,event_end_ms,occlusion,quality,remark
+sanya_pool_20260301_001,pool-001,trk-001,1700000001000,0.42,0.31,0.51,0.62,true,ABNORMAL_STILLNESS,1700000000000,1700000010000,low,good,静止超过10秒
+sanya_pool_20260301_001,pool-001,trk-001,1700000002000,0.42,0.31,0.51,0.62,true,ABNORMAL_STILLNESS,1700000000000,1700000010000,low,good,同一事件持续帧
+sanya_pool_20260301_002,pool-001,trk-007,1700000100000,0.18,0.28,0.27,0.63,true,VERTICAL_STRUGGLE,1700000098000,1700000103000,medium,normal,垂直挣扎
+sanya_pool_20260301_003,pool-001,trk-013,1700000200000,0.66,0.24,0.75,0.58,true,LONG_SUBMERGE,1700000195000,1700000204000,high,normal,头部不可见
+sanya_pool_20260301_004,pool-001,trk-021,1700000300000,0.09,0.20,0.17,0.57,true,DANGER_ZONE_STAY,1700000280000,1700000305000,low,good,深水区长期滞留
+sanya_pool_20260301_005,pool-001,trk-031,1700000400000,0.30,0.26,0.40,0.58,true,NORMAL_STILLNESS,1700000395000,1700000405000,low,good,正常漂浮不报警
