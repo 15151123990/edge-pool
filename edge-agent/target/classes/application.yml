@@ -1,0 +1,47 @@
+server:
+  port: 18080
+
+spring:
+  application:
+    name: edge-agent
+
+edge:
+  device:
+    id: edge-001
+  cloud:
+    base-url: http://127.0.0.1:19090
+    secret: dev-secret
+  sync:
+    heartbeat-ms: 10000
+    pull-task-ms: 5000
+  pipeline:
+    interval-ms: 200
+  alert:
+    artifact-dir: /tmp/pool-ai/artifacts
+    ffmpeg:
+      enabled: true
+      bin: ffmpeg
+      source: ""
+      clip-seconds: 10
+    storage:
+      type: oss   # local | oss | s3
+      local-dir: /tmp/pool-ai/uploaded
+      oss:
+        endpoint: oss-cn-shenzhen.aliyuncs.com
+        bucket: pool-alerts
+        access-key-id: ""
+        access-key-secret: ""
+        public-base: https://pool-alerts.oss-cn-shenzhen.aliyuncs.com
+      s3:
+        endpoint: http://127.0.0.1:9000
+        region: us-east-1
+        bucket: pool-alerts
+        access-key: minioadmin
+        secret-key: minioadmin
+        public-base: http://127.0.0.1:9000
+  mqtt:
+    enabled: false
+    broker-url: tcp://127.0.0.1:1883
+    client-id-prefix: edge-agent
+    qos: 1
+    task-topic-prefix: pool/edge/tasks

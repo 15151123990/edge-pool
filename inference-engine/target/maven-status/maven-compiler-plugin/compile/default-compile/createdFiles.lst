@@ -1,0 +1,4 @@
+com/pool/edge/infer/api/InferenceEngine.class
+com/pool/edge/infer/impl/OnnxInferenceEngine.class
+com/pool/edge/infer/api/ModelRegistry.class
+com/pool/edge/infer/impl/InMemoryModelRegistry.class

@@ -1,0 +1,18 @@
+server:
+  port: 19090
+
+spring:
+  application:
+    name: control-plane
+
+cloud:
+  sign:
+    secret: dev-secret
+  mqtt:
+    enabled: false
+    broker-url: tcp://127.0.0.1:1883
+    client-id: control-plane
+    qos: 1
+    task-topic-prefix: pool/edge/tasks
+  artifact:
+    dir: /tmp/pool-ai/cloud-artifacts

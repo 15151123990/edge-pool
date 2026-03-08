@@ -1,0 +1,11 @@
+com/pool/edge/agent/service/OpsTaskService.class
+com/pool/edge/agent/service/EdgeCloudClient.class
+com/pool/edge/agent/controller/EdgeOpsController$RoiUpdateRequest.class
+com/pool/edge/agent/service/EdgeCloudClient$1.class
+com/pool/edge/agent/service/EdgeSyncScheduler.class
+com/pool/edge/agent/service/EdgeCloudClient$SupplierWithException.class
+com/pool/edge/agent/app/EdgeAgentApplication.class
+com/pool/edge/agent/service/MqttTaskSubscriber.class
+com/pool/edge/agent/service/MqttTaskSubscriber$1.class
+com/pool/edge/agent/service/PipelineOrchestrator.class
+com/pool/edge/agent/controller/EdgeOpsController.class

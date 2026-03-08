@@ -1,0 +1,4 @@
+/Users/xupeng/develop/pool-project/inference-engine/src/main/java/com/pool/edge/infer/api/InferenceEngine.java
+/Users/xupeng/develop/pool-project/inference-engine/src/main/java/com/pool/edge/infer/api/ModelRegistry.java
+/Users/xupeng/develop/pool-project/inference-engine/src/main/java/com/pool/edge/infer/impl/InMemoryModelRegistry.java
+/Users/xupeng/develop/pool-project/inference-engine/src/main/java/com/pool/edge/infer/impl/OnnxInferenceEngine.java

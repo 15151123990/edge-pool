@@ -1,0 +1,6 @@
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/api/AlertPipeline.java
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/impl/DefaultAlertPipeline.java
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/storage/AliyunOssArtifactStorage.java
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/storage/ArtifactStorage.java
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/storage/LocalArtifactStorage.java
+/Users/xupeng/develop/pool-project/alert-uploader/src/main/java/com/pool/edge/alert/storage/S3ArtifactStorage.java

@@ -1,0 +1,6 @@
+com/pool/edge/alert/impl/DefaultAlertPipeline.class
+com/pool/edge/alert/storage/LocalArtifactStorage.class
+com/pool/edge/alert/storage/AliyunOssArtifactStorage.class
+com/pool/edge/alert/storage/ArtifactStorage.class
+com/pool/edge/alert/storage/S3ArtifactStorage.class
+com/pool/edge/alert/api/AlertPipeline.class

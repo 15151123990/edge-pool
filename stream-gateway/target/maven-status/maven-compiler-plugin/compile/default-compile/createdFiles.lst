@@ -1,0 +1,7 @@
+com/pool/edge/stream/api/StreamHealthStatus.class
+com/pool/edge/stream/impl/FfmpegStreamPuller$MutableHealthState.class
+com/pool/edge/stream/api/StreamPuller.class
+com/pool/edge/stream/impl/FfmpegStreamPuller$GrabberHolder.class
+com/pool/edge/stream/api/ChannelManager.class
+com/pool/edge/stream/impl/InMemoryChannelManager.class
+com/pool/edge/stream/impl/FfmpegStreamPuller.class

@@ -1,0 +1,11 @@
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/ChannelConfig.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/Enums.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/EventDecision.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/EventSignal.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/FramePacket.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/model/ModelSpec.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/protocol/ArtifactMeta.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/protocol/HeartbeatRequest.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/protocol/OpsTask.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/protocol/TaskResult.java
+/Users/xupeng/develop/pool-project/edge-common/src/main/java/com/pool/edge/common/security/HmacSigner.java
