@@ -236,4 +236,5 @@ public class EdgeOpsController {
      */
     public record RoiUpdateRequest(List<String> roiPolygons) {
     }
+
 }
